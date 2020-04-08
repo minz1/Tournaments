@@ -1,35 +1,91 @@
-class TournamentTree(numParticipants: Int) {
-    lateinit var rootNode: ParticipantNode
-    val numParticipants = numParticipants
-    val size: Int = (2 * numParticipants) - 1
-    val byes: Int
-        get() = getNextPowerOf2(size) - size
+@OptIn(ExperimentalStdlibApi::class)
+class TournamentTree(participants: List<Participant>, participantsPerMatch: Int = 2) {
+    private lateinit var rootNode: MatchNode
+
+    val participants = participants
+    val numParticipants: Int
+        get() = participants.size
+    val numByes: Int
+        get() = getNextPowerOf2(numMatches) - numMatches
+    var numMatches: Int = 0
+        private set
+
+    private fun runPostOrderTraversal(matchNode: MatchNode): MatchNode? {
+        if (matchNode == null) {
+            return null
+        }
+
+        if (matchNode.match.isComplete) {
+            return null
+        }
+
+        if (matchNode.hasLeft) {
+            if (! matchNode.left!!.match.isComplete)
+                return runPostOrderTraversal(matchNode.left!!)
+        }
+
+        if (matchNode.hasRight) {
+            if (! matchNode.right!!.match.isComplete)
+                return runPostOrderTraversal(matchNode.right!!)
+        }
+
+        return matchNode
+    }
+
+    public fun getNextMatch(): Match? {
+        return runPostOrderTraversal(rootNode)!!.match
+    }
 
     init {
-        require(numParticipants > 1) {
-            "A tournament must have more than 1 match."
+        require(participants.size > 1) {
+            "The amount of participants in the tournament must be greater than 1"
         }
 
-        val participants = ArrayDeque<ParticipantNode>(numParticipants)
-        for (i in 0 until numParticipants) {
-            participants.addLast(ParticipantNode())
+        require(participantsPerMatch > 1) {
+            "The amount of participants per match must be greater than 1"
         }
 
-        while (participants.size > 1) {
-            val first = participants.removeFirst()
-            val second = participants.removeFirst()
+        val numFullMatches = participants.size / participantsPerMatch
+        val matches = ArrayDeque<MatchNode>(numFullMatches + 1)
 
-            val temp = ParticipantNode()
+        for (i in 0 until numFullMatches) {
+            val matchParticipants = ArrayList<Participant>(participantsPerMatch)
+
+            for (x in 0 until participantsPerMatch) {
+                matchParticipants.add(participants[(i * 2) + x])
+            }
+
+            matches.addLast(MatchNode(Match(matchParticipants)))
+        }
+
+        val numRemainingParticipants = participants.size % participantsPerMatch
+        if (numRemainingParticipants > 0) {
+            val remainingParticipants = ArrayList<Participant>(numRemainingParticipants)
+
+            for (i in (participants.size - numRemainingParticipants) until participants.size) {
+                remainingParticipants.add(participants[i])
+            }
+
+            matches.addLast(MatchNode(Match(remainingParticipants)))
+        }
+
+        numMatches = matches.size
+
+        while (matches.size > 1) {
+            val first = matches.removeFirst()
+            val second = matches.removeFirst()
+
+            val temp = MatchNode()
             temp.left = first
             temp.right = second
 
-            participants.addLast(temp)
+            matches.addLast(temp)
         }
 
-        rootNode = participants.removeFirst()
+        rootNode = matches.removeFirst()
     }
 
-    fun getNextPowerOf2(number: Int): Int {
+    private fun getNextPowerOf2(number: Int): Int {
         var num = number - 1
         num = num or (num shr 1)
         num = num or (num shr 2)
