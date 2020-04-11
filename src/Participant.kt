@@ -1,4 +1,4 @@
-class Participant constructor(name: String = "", seed: Int = 0) {
-    var name = name
-    var seed = seed
+data class Participant (val name: String = "", var seed: Int = -1) {
+    val isEmpty: Boolean
+        get() = name.isNullOrEmpty()
 }

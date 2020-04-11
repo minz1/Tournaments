@@ -1,5 +1,5 @@
 fun main(args: Array<String>) {
-    print("Please enter the amount of participants you will have in the tournament (Must be greater than 2): ")
+    print("Please enter the amount of participants you will have in the tournament (Must be greater than 1): ")
 
     var numParticipants: Int = readLine()?.toIntOrNull() ?: 0
 
@@ -8,21 +8,16 @@ fun main(args: Array<String>) {
         numParticipants = readLine()?.toIntOrNull() ?: 0
     }
 
-    print("Please enter how many participants will be in each match (Must be greater than 2): ")
+    print("Please enter how many matches can be run at once (Must be greater than 0): ")
 
-    var numParticipantsPerMatch: Int = readLine()?.toIntOrNull() ?: 0
+    var numConcurrentMatches: Int = readLine()?.toIntOrNull() ?: 0
 
-    while (numParticipantsPerMatch < 2) {
+    while (numConcurrentMatches < 1) {
         print("INPUT ERROR: Please try again: ")
-        numParticipantsPerMatch = readLine()?.toIntOrNull() ?: 0
+        numConcurrentMatches = readLine()?.toIntOrNull() ?: 0
     }
 
-    while (numParticipantsPerMatch > numParticipants) {
-        print("ERROR: You may have more than ${numParticipants} per match! Please try again: ")
-        numParticipantsPerMatch = readLine()?.toIntOrNull() ?: 0
-    }
-
-    val participants = ArrayList<Participant>(numParticipants)
+    var participants = ArrayList<Participant>(numParticipants)
 
     for (i in 0 until numParticipants) {
         print("Please enter the name of Participant ${i + 1}: ")
@@ -33,18 +28,17 @@ fun main(args: Array<String>) {
             name = readLine() ?: ""
         }
 
-        participants.add(Participant(name))
+        participants.add(Participant(name, i))
     }
 
-    val tournament = TournamentTree(participants, numParticipantsPerMatch)
+    var tournament = TournamentTree(participants.toList(), numConcurrentMatches)
 
-    println("Players: ${tournament.numParticipants} \nByes: ${tournament.numByes} \nMatches: ${tournament.numMatches}")
+    println("Players: ${tournament.numParticipants} \nByes: ${tournament.numByes}")
 
-    var match = tournament.getNextMatch()
+    val matches = tournament.getNextMatches()
 
-    if (match != null) {
-        for (participant in match.participants) {
-            println(participant.name)
-        }
+    for (i in matches.indices) {
+        println("Contestant ${matches[i].contestant1.seed}: ${matches[i].contestant1.name}\n" +
+                "Contestant ${matches[i].contestant2.seed}: ${matches[i].contestant2.name}")
     }
 }

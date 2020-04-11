@@ -1,88 +1,89 @@
 @OptIn(ExperimentalStdlibApi::class)
-class TournamentTree(participants: List<Participant>, participantsPerMatch: Int = 2) {
-    private lateinit var rootNode: MatchNode
+class TournamentTree(initialParticipants: List<Participant>, numConcurrentMatches: Int = 1) {
+    private var rootNode: ParticipantNode
 
-    val participants = participants
+    private val participants = initialParticipants
     val numParticipants: Int
         get() = participants.size
     val numByes: Int
-        get() = getNextPowerOf2(numMatches) - numMatches
-    var numMatches: Int = 0
-        private set
+        get() = getNextPowerOf2(numParticipants) - numParticipants
+    private val numConcurrentMatches = numConcurrentMatches
+    var currentMatches = ArrayDeque<Match>(numConcurrentMatches)
 
-    private fun runPostOrderTraversal(matchNode: MatchNode): MatchNode? {
-        if (matchNode == null) {
-            return null
+    private fun getNextEmptyParticipantLO(participantNode: ParticipantNode): ParticipantNode? {
+        val queue = ArrayDeque<ParticipantNode>(numParticipants)
+
+        queue.addLast(participantNode)
+
+        while (queue.size > 0) {
+            val temp = queue.removeFirst()
+
+            if (temp.hasLeft) {
+                queue.addLast(temp.left!!)
+                if (temp.hasRight) {
+                    queue.addLast(temp.right!!)
+                    if ((! temp.left!!.participant.isEmpty) && (! temp.right!!.participant.isEmpty) && (! temp.hasLinkedMatch)) {
+                        return temp
+                    }
+                }
+            }
         }
 
-        if (matchNode.match.isComplete) {
-            return null
-        }
-
-        if (matchNode.hasLeft) {
-            if (! matchNode.left!!.match.isComplete)
-                return runPostOrderTraversal(matchNode.left!!)
-        }
-
-        if (matchNode.hasRight) {
-            if (! matchNode.right!!.match.isComplete)
-                return runPostOrderTraversal(matchNode.right!!)
-        }
-
-        return matchNode
+        return null
     }
 
-    public fun getNextMatch(): Match? {
-        return runPostOrderTraversal(rootNode)!!.match
+    public fun getNextMatches(): List<Match> {
+        if (currentMatches.size < numConcurrentMatches) {
+            val matchesToMake = (numConcurrentMatches - currentMatches.size)
+
+            for (i in 0 until matchesToMake) {
+                val emptyParticipantNode = getNextEmptyParticipantLO(rootNode)
+
+                emptyParticipantNode?.left?.participant?.let lit@{ left ->
+                    emptyParticipantNode.right?.participant?.let { right ->
+                         if (left.isEmpty || right.isEmpty)
+                            return@lit
+
+                        val match = Match(left, right)
+                        emptyParticipantNode.linkedMatch = match
+                        currentMatches.addFirst(match)
+                    }
+                }
+            }
+        }
+
+        return currentMatches.toList()
     }
 
     init {
-        require(participants.size > 1) {
+        require(initialParticipants.size > 1) {
             "The amount of participants in the tournament must be greater than 1"
         }
 
-        require(participantsPerMatch > 1) {
-            "The amount of participants per match must be greater than 1"
+        require(numConcurrentMatches > 0) {
+            "The amount of matches that can exist at once must be greater than 0"
         }
 
-        val numFullMatches = participants.size / participantsPerMatch
-        val matches = ArrayDeque<MatchNode>(numFullMatches + 1)
+        val participants = ArrayDeque<ParticipantNode>(numParticipants)
 
-        for (i in 0 until numFullMatches) {
-            val matchParticipants = ArrayList<Participant>(participantsPerMatch)
-
-            for (x in 0 until participantsPerMatch) {
-                matchParticipants.add(participants[(i * 2) + x])
-            }
-
-            matches.addLast(MatchNode(Match(matchParticipants)))
+        for (i in 0 until numParticipants) {
+            participants.addLast(ParticipantNode(initialParticipants[i]))
         }
 
-        val numRemainingParticipants = participants.size % participantsPerMatch
-        if (numRemainingParticipants > 0) {
-            val remainingParticipants = ArrayList<Participant>(numRemainingParticipants)
+        var i: Int = 0
+        while (participants.size > 1) {
+            i++
+            val first = participants.removeFirst()
+            val second = participants.removeFirst()
 
-            for (i in (participants.size - numRemainingParticipants) until participants.size) {
-                remainingParticipants.add(participants[i])
-            }
+            val temp = ParticipantNode()
+            temp.right = first
+            temp.left = second
 
-            matches.addLast(MatchNode(Match(remainingParticipants)))
+            participants.addLast(temp)
         }
 
-        numMatches = matches.size
-
-        while (matches.size > 1) {
-            val first = matches.removeFirst()
-            val second = matches.removeFirst()
-
-            val temp = MatchNode()
-            temp.left = first
-            temp.right = second
-
-            matches.addLast(temp)
-        }
-
-        rootNode = matches.removeFirst()
+        rootNode = participants.removeFirst()
     }
 
     private fun getNextPowerOf2(number: Int): Int {
