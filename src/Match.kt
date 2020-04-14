@@ -1,3 +1,5 @@
+package com.minz
+
 class Match constructor(contestant1: Participant, contestant2: Participant) {
     val contestant1 = contestant1
     val contestant2 = contestant2

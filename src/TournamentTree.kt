@@ -1,14 +1,56 @@
+package com.minz
+
+import kotlin.math.ceil
+import kotlin.math.log2
+import kotlin.math.pow
+
 @OptIn(ExperimentalStdlibApi::class)
 class TournamentTree(initialParticipants: List<Participant>, numConcurrentMatches: Int = 1) {
     private var rootNode: ParticipantNode
-
     private val participants = initialParticipants
+
     val numParticipants: Int
         get() = participants.size
     val numByes: Int
         get() = getNextPowerOf2(numParticipants) - numParticipants
     private val numConcurrentMatches = numConcurrentMatches
     var currentMatches = ArrayDeque<Match>(numConcurrentMatches)
+    val numNodes: Int
+        get() = (numParticipants * 2) - 1
+    val height: Int
+        get() = ceil(log2(numNodes + 1f)).toInt()
+
+    public fun getParticipantsByRound(): List<List<Participant>> {
+        val queue = ArrayDeque<ParticipantNode>(numParticipants)
+        queue.addLast(rootNode)
+
+        var depth = 1
+        var numNodes = 1
+
+        val rounds = ArrayList<ArrayList<Participant>>(height)
+
+        for (i in 0 until height) {
+            rounds.add(ArrayList<Participant>())
+        }
+
+        while (queue.size > 0) {
+            val temp = queue.removeFirst()
+            rounds[height - depth].add(temp.participant)
+
+            if (temp.hasLeft) {
+                queue.addLast(temp.left!!)
+            }
+            if (temp.hasRight) {
+                queue.addLast(temp.right!!)
+            }
+
+            if (++numNodes == 2f.pow(depth).toInt()) {
+                depth++;
+            }
+        }
+
+        return rounds
+    }
 
     private fun getNextEmptyParticipantLO(participantNode: ParticipantNode): ParticipantNode? {
         val queue = ArrayDeque<ParticipantNode>(numParticipants)

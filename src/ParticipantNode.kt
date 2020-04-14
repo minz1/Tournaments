@@ -1,3 +1,5 @@
+package com.minz
+
 class ParticipantNode constructor(participant: Participant = Participant()) {
     val participant = participant
     var linkedMatch: Match? = null
