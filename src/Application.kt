@@ -22,17 +22,76 @@ fun Application.module(testing: Boolean = false) {
     val client = HttpClient(Apache) {
     }
 
-    routing {
-        get("/visualization") {
-            val numDummyParticipants = 16
-            val testParticipants = ArrayList<Participant>(numDummyParticipants)
+    val numDummyParticipants = 8
+    val testParticipants = ArrayList<Participant>(numDummyParticipants)
 
-            for (i in 0 until numDummyParticipants) {
-                testParticipants.add(Participant("P$i", i))
+    for (i in 0 until numDummyParticipants) {
+        testParticipants.add(Participant("P$i", i))
+    }
+
+    var tournament = TournamentTree(testParticipants)
+
+    routing {
+        route("/") {
+            get {
+                call.respondHtml {
+                    head {
+                        title { +"Tournament Form" }
+                    }
+                    body {
+                        p {
+                            +"Participants:"
+                        }
+
+                        form(action = "/", method = FormMethod.post, encType = FormEncType.applicationXWwwFormUrlEncoded) {
+                            id = "tournament-creation-form"
+                            textArea(rows = "50", cols = "50") {
+                                name = "participants"
+                                form = "tournament-creation-form"
+                                required = true
+                            }
+                            br
+                            input(type = InputType.submit) {
+                                value = "Generate Tournament!"
+                            }
+                        }
+                    }
+                }
             }
 
-            var tournament = TournamentTree(testParticipants)
+            post {
+                val post = call.receiveParameters()
 
+                if (post["participants"] != null) {
+                    val participants = post["participants"]!!.lines().toMutableList()
+
+                    participants.removeIf() {
+                        it.isNullOrBlank()
+                    }
+
+                    if (participants.size < 2) {
+                        call.respondRedirect("/error", permanent = true)
+                        return@post
+                    }
+
+                    val participantObjs = ArrayList<Participant>(participants.size)
+
+                    for (i in participants.indices) {
+                        val participantName = participants[i]
+
+                        if (participantName.isNotBlank()) {
+                            participantObjs.add(Participant(participantName, i))
+                        }
+                    }
+
+                    tournament = TournamentTree(participantObjs)
+
+                    call.respondRedirect("/visualization", permanent = true)
+                }
+            }
+        }
+
+        get("/visualization") {
             call.respondHtml {
                 head {
                     title { +"Tournament Visualization" }
@@ -77,6 +136,26 @@ fun Application.module(testing: Boolean = false) {
                                 }
                             }
                         }
+                    }
+                    a(href="/") {
+                        +"Return to home"
+                    }
+                }
+            }
+        }
+
+        get("/error") {
+            call.respondHtml {
+                head {
+                    title { + "ERROR"}
+                }
+
+                body {
+                    h1 {
+                        +"ERROR"
+                    }
+                    a(href="/") {
+                        +"Return to home"
                     }
                 }
             }
